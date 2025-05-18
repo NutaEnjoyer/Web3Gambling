@@ -11,7 +11,13 @@
   "description": "",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.24.0"
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "@types/chai": "^5.2.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.15.18",
+    "hardhat": "^2.24.0",
+    "typechain": "^8.3.2"
   },
   "dependencies": {
     "@chainlink/contracts": "^1.4.0",

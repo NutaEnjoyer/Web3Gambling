@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -33,7 +33,7 @@ contract Casino is ReentrancyGuard, Ownable, VRFConsumerBaseV2 {
     bytes32 private immutable keyHash;
     uint16 private immutable requestConfirmations;
     uint32 private immutable callbackGasLimit;
-    uint256 private immutable numWords;
+    uint32  private immutable numWords;
 
     mapping(uint256 => Game) public games;
     mapping(address => uint256) public balances;
@@ -51,7 +51,9 @@ contract Casino is ReentrancyGuard, Ownable, VRFConsumerBaseV2 {
         uint16 _requestConfirmations,
         uint32 _callbackGasLimit,
         uint32 _numWords
-    ) VRFConsumerBaseV2(_vrfCoordinator) {
+    ) VRFConsumerBaseV2(_vrfCoordinator)
+      Ownable(msg.sender)
+     {  // <- Добавьте вызов родительского конструктора
         vrfCoordinator = VRFCoordinatorV2Interface(_vrfCoordinator);
         subscriptionId = _subscriptionId;
         keyHash = _keyHash;
@@ -60,7 +62,7 @@ contract Casino is ReentrancyGuard, Ownable, VRFConsumerBaseV2 {
         numWords = _numWords;
         
         _initializeGames();
-    }
+}
 
     function _initializeGames() private {
         games[1] = Game(GameType.CoinFlip, 0.01 ether, 10 ether, true);
@@ -87,7 +89,7 @@ contract Casino is ReentrancyGuard, Ownable, VRFConsumerBaseV2 {
         require(game.isActive, "Game is not active");
         require(betAmount >= game.minBet && betAmount <= game.maxBet, "Invalid bet amount");
         require(balances[msg.sender] >= betAmount, "Insufficient balance");
-        require(!activeGames[msg.sender], "Player already has an active game");
+        require(activeGames[msg.sender].betAmount == 0, "Player already has an active game");
     }
 
     function _requestRandomness() private returns (uint256) {
@@ -102,18 +104,18 @@ contract Casino is ReentrancyGuard, Ownable, VRFConsumerBaseV2 {
         return requestId;
     }
 
-    function _calcHouseEdge(uint256 amount) private pure returns (uint256) {
+    function _calcHouseEdge(uint256 amount) private view returns (uint256) {
         return amount - (amount * HOUSE_EDGE) / 100;
     }
 
-    function _getMultiplier(ActiveGame storage activeGame) private pure returns (uint256) {
+    function _getMultiplier(ActiveGame storage activeGame) private view returns (uint256) {
         if (activeGame.gameType == GameType.CoinFlip) return 2;
         if (activeGame.gameType == GameType.DiceNumber) return 6;
         if (activeGame.gameType == GameType.DiceHighLow) {
             uint256 totalOutcomes = 6;
             uint256 multiplier;
     
-            if (activeGame.choice.numbers[0]) {
+            if (activeGame.choice.numbers[0] == 1) {
                 uint256 winningOutcomes = 6 - activeGame.choice.numbers[1];
                 require(winningOutcomes > 0, "No winning outcomes for High bet");
                 multiplier = totalOutcomes * 1e18 / winningOutcomes; // 6/3 = 2x
@@ -226,7 +228,7 @@ contract Casino is ReentrancyGuard, Ownable, VRFConsumerBaseV2 {
             win = (result == game.choice.number);
         } else if (game.gameType == GameType.DiceHighLow) {
             result = randomness % 6 + 1;
-            if (game.choice.numbers[0]) {
+            if (game.choice.numbers[0] == 1) {
                 win = (result > game.choice.numbers[1]);
             } else {
                 win = (result <= game.choice.numbers[1]);
